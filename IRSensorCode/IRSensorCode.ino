@@ -13,6 +13,9 @@ const unsigned int NUM_SENSORS = 6;
 
 const float weights[NUM_SENSORS]= {-(DIST + SENS_W * 4), -(DIST + SENS_W * 2), -DIST, DIST, DIST + SENS_W * 2, DIST + SENS_W * 4};
 
+const float leftWeights[NUM_SENSORS / 2]  = {-(DIST + SENS_W * 4), -(DIST + SENS_W * 2), -DIST};
+const float rightWeights[NUM_SENSORS / 2] = {(DIST + SENS_W * 4), (DIST + SENS_W * 2), DIST};
+
 void setup() {
   Serial.begin(9600);
   
@@ -33,28 +36,94 @@ void loop() {
   const int sensr2 = digitalRead(IR_R_2) - 1;
   const int sensr3 = digitalRead(IR_R_3) - 1;
 
+
+  const int leftSensValues[NUM_SENSORS / 2] = {sensl3, sensl2, sensl1};
+  const int rightSensValues[NUM_SENSORS / 2] = {sensr3, sensr2, sensr1};
+
   const int sensValues[NUM_SENSORS] = {sensl3, sensl2, sensl1, sensr1, sensr2, sensr3};
 
-  // Serial.print(sensl3);
-  // Serial.print(sensl2);
-  // Serial.print(sensl1);
-  // Serial.print(sensr1);
-  // Serial.print(sensr2);
-  // Serial.print(sensr3);
+  // for (int i = 0; i < NUM_SENSORS; i++) Serial.print(sensValues[i]);
+  // Serial.println();
 
-  Serial.println();
-  Serial.println(sumWeights(sensValues));
+  if (isValid(sensValues)) {
+    float left = sumLeft(leftSensValues);
+    float right = sumRight(rightSensValues);
+
+    Serial.println(sumWeights(left, right));
+  } else {
+    Serial.println("STOP");
+  } 
 }
 
-float sumRight (int rightValues[]) {}
+bool isValid (int sensValues[]) {
+  int count = 0;
 
-float sumLeft (int leftValues[]) {}
-
-float sumWeights (int sensValues[]) {
-  float acc = 0;
   for (int i = 0; i < NUM_SENSORS; i++) {
-    acc += weights[i] * sensValues[i];
+    if (sensValues[i] == -1) count ++;
   }
 
-  return acc;
+  if (count > 2) return false;
+
+  for (int i = 0; i < NUM_SENSORS; i++) {
+    if (sensValues[i] == -1 && count == 2) {
+      if (i == 0) return sensValues[i + 1] == -1;
+      else if (i == NUM_SENSORS - 1) return sensValues[i - 1] == -1;
+
+      return sensValues[i + 1] == -1;
+    }
+  }
+
+  return true;
+}
+
+float sumPair(float a, float b) {
+  if (a != 0 && b != 0) {
+    return a > 0? a - DIST : a + DIST;
+  }
+
+  return a == 0? b : a;
+}
+
+float sumRight (int sensValues[]) {
+  int count = 0;
+
+  for (int i = 0; i < NUM_SENSORS / 2; i++) {
+    if (sensValues[i] != 0) count += 1;
+  }
+
+  if (count == 1) {
+    for (int i = 0; i < NUM_SENSORS / 2; i++) {
+      if (sensValues[i] != 0) return sensValues[i] * rightWeights[i];
+    }
+  } else if (count == 2) {
+    for (int i = 0; i < NUM_SENSORS / 2; i++) {
+      if (sensValues[i] != 0) return sensValues[i] * rightWeights[i] + DIST;
+    }
+  }
+
+  return 0.0;
+}
+
+float sumLeft (int sensValues[]) {
+  int count = 0;
+
+  for (int i = 0; i < NUM_SENSORS / 2; i++) {
+    if (sensValues[i] != 0) count += 1;
+  }
+
+  if (count == 1) {
+    for (int i = 0; i < NUM_SENSORS / 2; i++) {
+      if (sensValues[i] != 0) return sensValues[i] * leftWeights[i];
+    }
+  } else if (count == 2) {
+    for (int i = 0; i < NUM_SENSORS / 2; i++) {
+      if (sensValues[i] != 0) return sensValues[i] * leftWeights[i] - DIST;
+    }
+  }
+
+  return 0.0;
+}
+
+float sumWeights (float left, float right) {
+  return left + right;
 }
