@@ -13,7 +13,7 @@ bool IrSensorArray::isValid() {
         if (_sensValues[i] == 1) count ++;
     }
 
-    if (count > 2) return false;
+    if (count > 2 || count < 1) return false;
 
     for (int i = 0; i < _NUM_SENSORS; i++) {
         if (_sensValues[i] == 1 && count == 2) {
