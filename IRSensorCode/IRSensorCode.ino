@@ -1,41 +1,47 @@
+#include <Pixy2.h>
 #include <Servo.h>
 #include "IrSensorArray.hpp"
 
-Servo servoMotor;
-
 // Servo PIN
-const unsigned int SERVO_PIN = A0;
-
-// Servo range: 20 - 160
-const unsigned int SERVO_STRAIGHT = 90;
-const unsigned int SERVO_LEFT = 160;
-const unsigned int  SERVO_RIGHT = 20;
+#define SERVO_PIN A0
 
 // IR Sensors
-const unsigned int IR_L_1 = A4;
-const unsigned int IR_L_2 = A5;
-const unsigned int IR_L_3 = A7;
+#define IR_L_1 A4
+#define IR_L_2 A5
+#define IR_L_3 A7
 
-const unsigned int IR_R_1 = A3;
-const unsigned int IR_R_2 = A2;
-const unsigned int IR_R_3 = A1;
-
-const float MAX_ERROR = 5.72;
+#define IR_R_1 A3
+#define IR_R_2 A2
+#define IR_R_3 A1
 
 // H-Bridge
-const unsigned int IN_4 = 8;
-const unsigned int IN_3 = 9;
+#define IN_4 8
+#define IN_3 9
 
-// 10 & 11 can't be used with Servo.h
-const unsigned int ENA34 = 6;
+#define ENA34 6
+
+// Servo range: 20 - 160
+#define SERVO_STRAIGHT 90
+#define SERVO_LEFT 160
+#define  SERVO_RIGHT 20
+
+#define MAX_ERROR 5.72
 
 //RANGE: 0 - 255
-const unsigned int MAX_MOTOR_SPEED = 150; // Adjust for real world usage
+#define MAX_MOTOR_SPEED 150 // Adjust for real world usage
 
 // PID
-const float Kp = 12.0;
-const float Ki = 0.1;
-const float Kd = 0.8;
+#define Kp 12.0
+#define Ki 0.1
+#define Kd 0.8
+
+// Pixy
+#define GREEN 1
+#define YELLOW 2
+#define RED 3
+
+Pixy2 pixy;
+Servo servoMotor;
 
 float oldD = 0.0;
 float prevError = 0.0;
@@ -44,6 +50,7 @@ unsigned long prevTime = 0;
 
 int normalizeIrReading(int);
 void printValues(int*, int); 
+bool trafficLightCheck();
 void doMotorDrive(int);
 
 void setup() {
@@ -66,9 +73,11 @@ void setup() {
   pinMode(IR_R_1, INPUT);
   pinMode(IR_R_2, INPUT);
   pinMode(IR_R_3, INPUT);
+
+  pixy.init();
 }
 
-void loop() {
+void loop() {  
   const int sensL1 = normalizeIrReading(analogRead(IR_L_1));
   const int sensL2 = normalizeIrReading(analogRead(IR_L_2));
   const int sensL3 = normalizeIrReading(analogRead(IR_L_3));
@@ -82,7 +91,7 @@ void loop() {
 
   // printValues(irSensorArray.getValues(), irSensorArray._NUM_SENSORS);
 
-  if (irSensorArray.isValid()) {
+  if (trafficLightCheck() && irSensorArray.isValid()) {
     doMotorDrive(MAX_MOTOR_SPEED);
 
     const float error = irSensorArray.sumWeights();
@@ -112,7 +121,7 @@ void loop() {
   } else {
     doMotorDrive(0);
     servoMotor.write(SERVO_STRAIGHT);
-    //Serial.println("STOP");
+    Serial.println("STOP");
   } 
 }
 
@@ -131,4 +140,26 @@ void printValues(int* values, int size) {
 
 void doMotorDrive(int motorSpeed) {
   analogWrite(ENA34, motorSpeed);
+}
+
+bool trafficLightCheck() {
+  pixy.ccc.getBlocks();
+
+  for (int i = 0; i < pixy.ccc.numBlocks; i++) {
+    switch (pixy.ccc.blocks[i].m_signature) {
+      case GREEN:
+        Serial.println("Green light detected ");
+        return true;
+      case YELLOW:
+        Serial.println("Yellow light detected ");
+        return false;
+      case RED:
+        Serial.println("Red light detected ");
+        return false;
+      default:
+        return true;
+    }
+ }
+
+ return false;
 }
