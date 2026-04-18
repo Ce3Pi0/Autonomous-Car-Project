@@ -51,7 +51,7 @@ unsigned long prevTime = 0;
 int normalizeIrReading(int);
 void printValues(int*, int); 
 bool trafficLightCheck();
-void doMotorDrive(int);
+void doMotorDrive(int, float);
 
 void setup() {
   Serial.begin(9600);
@@ -92,9 +92,9 @@ void loop() {
   // printValues(irSensorArray.getValues(), irSensorArray._NUM_SENSORS);
 
   if (trafficLightCheck() && irSensorArray.isValid()) {
-    doMotorDrive(MAX_MOTOR_SPEED);
-
     const float error = irSensorArray.sumWeights();
+    
+    doMotorDrive(MAX_MOTOR_SPEED, error);
 
     unsigned long now = millis();
     float dt = (now - prevTime) / 1000.0;
@@ -138,8 +138,12 @@ void printValues(int* values, int size) {
 }
 
 
-void doMotorDrive(int motorSpeed) {
-  analogWrite(ENA34, motorSpeed);
+void doMotorDrive(int motorSpeed, float error) {
+  if (error == 0)
+    analogWrite(ENA34, motorSpeed);
+  else 
+    analogWrite(ENA34, motorSpeed / 2);
+
 }
 
 bool trafficLightCheck() {
